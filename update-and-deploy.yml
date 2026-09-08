@@ -1,0 +1,46 @@
+name: RU Rubber Daily Update & Deploy
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '10 9 * * 1-5'
+      timezone: 'Asia/Shanghai'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Update data
+        env:
+          ACCOUNT_EQUITY: ${{ vars.ACCOUNT_EQUITY }}
+          RISK_PCT: ${{ vars.RISK_PCT }}
+          ENTRY_PRICE: ${{ vars.ENTRY_PRICE }}
+          STOP_PRICE: ${{ vars.STOP_PRICE }}
+          RU_CONTRACT_MULTIPLIER: ${{ vars.RU_CONTRACT_MULTIPLIER }}
+          RU_MARGIN_RATE: ${{ vars.RU_MARGIN_RATE }}
+          USD_CNY: ${{ vars.USD_CNY }}
+          RU_IMPORT_FREIGHT_USD: ${{ vars.RU_IMPORT_FREIGHT_USD }}
+          RU_IMPORT_TARIFF: ${{ vars.RU_IMPORT_TARIFF }}
+          RU_IMPORT_VAT: ${{ vars.RU_IMPORT_VAT }}
+          RU_IMPORT_PORT_RMB: ${{ vars.RU_IMPORT_PORT_RMB }}
+          RU_IMPORT_DOMESTIC_SPOT: ${{ vars.RU_IMPORT_DOMESTIC_SPOT }}
+        run: python scripts/update.py
+      - name: Commit updated data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/data.json
+          git diff --cached --quiet || git commit -m 'auto: update RU dashboard data'
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
